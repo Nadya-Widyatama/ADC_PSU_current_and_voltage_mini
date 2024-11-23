@@ -70,28 +70,10 @@ static void MX_TIM1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint16_t value_voltage,value_current;
 uint32_t NowMillis, SebelumMillis;
-uint32_t sumADC_voltage = 0;
-uint32_t sumADC_current = 0;
-float temperature,voltage,voltage_current,current,arusFiltered,konsumsiEnergi;
-float read_data_float, write_value_float;
+float temperature,voltage1,current1,voltage2,current2,konsumsiEnergi;
+float read_data_float, write_value_float,arusFiltered;
 int before = 0;
-
-
-// Current Kalman Filter algorithm
-static float P_current = 1.0;
-static float K_current = 0.0;
-static float X_current = 0.0;
-static float Q_current = 0.001;
-static float R_current = 0.01;
-
-// Voltage Kalman Filter algorithm
-static float P_voltage = 1.0;
-static float K_voltage = 0.0;
-static float X_voltage = 0.0;
-static float Q_voltage = 0.001;
-static float R_voltage = 0.01;
 
 void __io_putchar(char ch) {
 	HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 10);
@@ -132,7 +114,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
+  //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
   Beep_Beep();
 
@@ -144,7 +126,9 @@ int main(void)
 		  break;
 	  }
 	  HAL_Delay(50);
+
   }
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -156,20 +140,20 @@ int main(void)
 //	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, 0);
 //	  HAL_Delay(200);
 	  ReadData(address, sizeof(float));
-	  printf("Read Data: %f |", read_data_float);
+	  //printf("Read Data: %f |", read_data_float);
 	  //Membaca ADC
 	  ReadADC_voltage_current();
-	  printf("volt : %.4f |", voltage_current);
-	  printf("Arus : %.4f A |", current);
-	  if(voltage <13.1 && before == 0){
+	  //printf("volt : %.4f |", voltage1);
+	  //printf("Arus : %.4f A |", current1);
+	  if(voltage1 <13.1 && before == 0){
 		  write_value(konsumsiEnergi, address);
 		  HAL_Delay(50);
 		  before = 1;
 	  }
-	  else if(voltage > 13.1 && before == 1){
+	  else if(voltage1 > 13.1 && before == 1){
 		  before=0;
 	  }
-	  printf("Consumption: %.4f Ah\n", konsumsiEnergi);
+	  //printf("Consumption: %.4f Ah\n", konsumsiEnergi);
 	  HAL_Delay(100);
     /* USER CODE END WHILE */
 
@@ -259,7 +243,7 @@ static void MX_ADC1_Init(void)
   /** Common config
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV2;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
@@ -495,7 +479,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12|GPIO_PIN_13, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, BATT1_Pin|BATT2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
@@ -507,8 +491,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB12 PB13 */
-  GPIO_InitStruct.Pin = GPIO_PIN_12|GPIO_PIN_13;
+  /*Configure GPIO pins : BATT1_Pin BATT2_Pin */
+  GPIO_InitStruct.Pin = BATT1_Pin|BATT2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -527,51 +511,77 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void ReadADC_voltage_current(void){
+	uint32_t sumADC_voltage1, sumADC_current1,sumADC_voltage2, sumADC_current2;
+	uint16_t value_voltage1, value_current1, value_voltage2, value_current2;
+	float voltage_current1,voltage_current2;
+
 	ADC_ChannelConfTypeDef sConfig = {0};
-	sumADC_voltage = sumADC_current = 0;
+	sumADC_voltage1 = sumADC_current1 = sumADC_voltage2 = sumADC_current2 = 0;
 	for (int i = 0; i < 500; i++) {
-		sConfig.Channel = ADC_CHANNEL_5;
 		sConfig.Rank = ADC_REGULAR_RANK_1;
 		sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES_5;
+
+		//ADC VOLTAGE BATT1
+		sConfig.Channel = ADC_CHANNEL_5;
 		HAL_ADC_ConfigChannel(&hadc1, &sConfig);
 		HAL_ADC_Start(&hadc1);
 		if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
-			sumADC_voltage += HAL_ADC_GetValue(&hadc1);
+			sumADC_voltage1 += HAL_ADC_GetValue(&hadc1);
 		}
 		HAL_ADC_Stop(&hadc1);
+
+		//ADC VOLTAGE BATT2
+		sConfig.Channel = ADC_CHANNEL_4;
+		HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+		HAL_ADC_Start(&hadc1);
+		if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
+			sumADC_voltage2 += HAL_ADC_GetValue(&hadc1);
+		}
+		HAL_ADC_Stop(&hadc1);
+
+		//ADC CURRENT BATT1
 		sConfig.Channel = ADC_CHANNEL_1;
 		HAL_ADC_ConfigChannel(&hadc1, &sConfig);
 		HAL_ADC_Start(&hadc1);
 		if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
-			sumADC_current += HAL_ADC_GetValue(&hadc1);
+			sumADC_current1 += HAL_ADC_GetValue(&hadc1);
+		}
+		HAL_ADC_Stop(&hadc1);
+
+//		ADC CURRENT BATT2
+		sConfig.Channel = ADC_CHANNEL_10;
+		HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+		HAL_ADC_Start(&hadc1);
+		if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
+			sumADC_current2 += HAL_ADC_GetValue(&hadc1);
 		}
 		HAL_ADC_Stop(&hadc1);
 	}
-	value_voltage = sumADC_voltage / 500;
-	value_current = sumADC_current / 500;
+	value_voltage1 = ((sumADC_voltage1 / 500) - 1480) * 2552 / (4032 - 1480);
+	value_current1 = ((sumADC_current1 / 500) - 1480) * 2552 / (4032 - 1480);
+	value_voltage2 = ((sumADC_voltage2 / 500) - 1480) * 2552 / (4032 - 1480);
+	value_current2 = ((sumADC_current2 / 500) - 1480) * 2552 / (4032 - 1480);
 
-	// Update Kalman Filter for Voltage
-	P_voltage = P_voltage + Q_voltage;
-	K_voltage = P_voltage / (P_voltage + R_voltage);
-	X_voltage = X_voltage + K_voltage * (value_voltage - X_voltage);
-	P_voltage = (1 - K_voltage) * P_voltage;
-	voltage = (X_voltage * 14.6) / 3816;
+	voltage1 = (value_voltage1 * 14.6) / 3816;
+	voltage_current1 = (value_current1 * 3.31) / 2552;
+	current1 = fabs((voltage_current1 - 2.5305) / 0.10156);
 
-	// Update Kalman Filter for Current
-	P_current = P_current + Q_current;
-	K_current = P_current / (P_current + R_current);
-	X_current = X_current + K_current * (value_current - X_current);
-	P_current = (1 - K_current) * P_current;
-	voltage_current = (X_current * 3.3) / 4017;
-	current = fabs((voltage_current - 2.8541) / 0.0373);
+	voltage2 = (value_voltage2 * 14.6) / 3816;
+	voltage_current2 = (value_current2 * 3.3) / 4017;
+	current2 = fabs((voltage_current2 - 2.8541) / 0.0373);
 
 	//Konsumsi Arus Algoritma
 	NowMillis = HAL_GetTick();
 	if (NowMillis - SebelumMillis >= 1000){
-		arusFiltered = 0.2 * current + 0.8 * arusFiltered;
+		arusFiltered = 0.2 * current1 + 0.8 * arusFiltered;
 		konsumsiEnergi += (arusFiltered / 3600);
 		SebelumMillis = NowMillis;
 	}
+
+	printf("Read data : %d |", value_current1);
+	printf("voltage : %.4f |", voltage_current1);
+	printf("current : %.4f \n", current1);
+    //printf("Arus : %.5f A |", voltage_current2);
 }
 
 // Fungsi untuk menghapus dan menulis nilai ke flash memory

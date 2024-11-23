@@ -59,6 +59,18 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define ACS_BATT2_Pin GPIO_PIN_0
+#define ACS_BATT2_GPIO_Port GPIOC
+#define ACS_BATT1_Pin GPIO_PIN_1
+#define ACS_BATT1_GPIO_Port GPIOA
+#define ADC_BATT2_Pin GPIO_PIN_4
+#define ADC_BATT2_GPIO_Port GPIOC
+#define ADC_BATT1_Pin GPIO_PIN_1
+#define ADC_BATT1_GPIO_Port GPIOB
+#define BATT1_Pin GPIO_PIN_12
+#define BATT1_GPIO_Port GPIOB
+#define BATT2_Pin GPIO_PIN_13
+#define BATT2_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

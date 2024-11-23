@@ -34,34 +34,34 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := blink h5
+BUILD_ARTIFACT_NAME := ADC_PSU_current_and_voltage_mini
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-blink\ h5.elf \
+ADC_PSU_current_and_voltage_mini.elf \
 
 MAP_FILES += \
-blink\ h5.map \
+ADC_PSU_current_and_voltage_mini.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-blink\ h5.list \
+ADC_PSU_current_and_voltage_mini.list \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: blink\ h5.elf secondary-outputs
+main-build: ADC_PSU_current_and_voltage_mini.elf secondary-outputs
 
 # Tool invocations
-blink\ h5.elf blink\ h5.map: $(OBJS) $(USER_OBJS) D:\STM\blink\ h5\STM32H503RBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "blink h5.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m33 -T"D:\STM\blink h5\STM32H503RBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="blink h5.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -u _scanf_float -Wl,--start-group -lc -lm -Wl,--end-group
+ADC_PSU_current_and_voltage_mini.elf ADC_PSU_current_and_voltage_mini.map: $(OBJS) $(USER_OBJS) D:\STM\blink\ h5\STM32H503RBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "ADC_PSU_current_and_voltage_mini.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m33 -T"D:\STM\blink h5\STM32H503RBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="ADC_PSU_current_and_voltage_mini.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -u _scanf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -70,14 +70,14 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-blink\ h5.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "blink h5.list"
+ADC_PSU_current_and_voltage_mini.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "ADC_PSU_current_and_voltage_mini.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) blink\ h5.elf blink\ h5.list blink\ h5.map blink\\ h5.elf default.size.stdout
+	-$(RM) ADC_PSU_current_and_voltage_mini.elf ADC_PSU_current_and_voltage_mini.list ADC_PSU_current_and_voltage_mini.map default.size.stdout
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)
