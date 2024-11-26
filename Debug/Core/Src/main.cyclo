@@ -7,7 +7,7 @@
 ../Core/Src/main.c:419:13:MX_USART1_UART_Init	5
 ../Core/Src/main.c:467:13:MX_GPIO_Init	1
 ../Core/Src/main.c:513:6:ReadADC_voltage_current	7
-../Core/Src/main.c:588:6:write_value	1
-../Core/Src/main.c:631:6:ReadData	1
-../Core/Src/main.c:648:6:Beep_Beep	2
-../Core/Src/main.c:668:6:Error_Handler	1
+../Core/Src/main.c:592:6:write_value	1
+../Core/Src/main.c:635:6:ReadData	1
+../Core/Src/main.c:652:6:Beep_Beep	2
+../Core/Src/main.c:672:6:Error_Handler	1

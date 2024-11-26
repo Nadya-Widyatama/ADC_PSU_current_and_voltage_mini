@@ -115,7 +115,7 @@ int main(void)
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
   //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
+  // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
   Beep_Beep();
 
   uint32_t address = 0x000000;
@@ -557,18 +557,18 @@ void ReadADC_voltage_current(void){
 		}
 		HAL_ADC_Stop(&hadc1);
 	}
-	value_voltage1 = ((sumADC_voltage1 / 500) - 1480) * 2552 / (4032 - 1480);
+	value_voltage1 = ((sumADC_voltage1 / 500) - 1317) * 2372 / (3689 - 1317);
 	value_current1 = ((sumADC_current1 / 500) - 1480) * 2552 / (4032 - 1480);
-	value_voltage2 = ((sumADC_voltage2 / 500) - 1480) * 2552 / (4032 - 1480);
-	value_current2 = ((sumADC_current2 / 500) - 1480) * 2552 / (4032 - 1480);
+	value_voltage2 = ((sumADC_voltage2 / 500) - 1317) * 2380 / (3697 - 1317);
+	value_current2 = ((sumADC_current2 / 500) - 1336) * 2474 / (3810 - 1336);
 
-	voltage1 = (value_voltage1 * 14.6) / 3816;
+	voltage1 = (value_voltage1 * 14.6) / 2372;
 	voltage_current1 = (value_current1 * 3.31) / 2552;
-	current1 = fabs((voltage_current1 - 2.5305) / 0.10156);
+	current1 = fabs((voltage_current1 - 2.5305) / 0.1041);
 
-	voltage2 = (value_voltage2 * 14.6) / 3816;
-	voltage_current2 = (value_current2 * 3.3) / 4017;
-	current2 = fabs((voltage_current2 - 2.8541) / 0.0373);
+	voltage2 = (value_voltage2 * 14.6) / 2380;
+	voltage_current2 = (value_current2 * 3.31) / 2474;
+	current2 = fabs((voltage_current2 - 2.437) / 0.1041);
 
 	//Konsumsi Arus Algoritma
 	NowMillis = HAL_GetTick();
@@ -578,10 +578,14 @@ void ReadADC_voltage_current(void){
 		SebelumMillis = NowMillis;
 	}
 
-	printf("Read data : %d |", value_current1);
-	printf("voltage : %.4f |", voltage_current1);
-	printf("current : %.4f \n", current1);
-    //printf("Arus : %.5f A |", voltage_current2);
+	//printf("Raw Data voltage: %d |", value_voltage1);
+	//
+
+	printf("Voltage1 : %.4f |", voltage1);
+	printf("current1 : %.4f |", current1);
+	printf("Voltage2 : %.4f |", voltage2);
+	printf("current2 : %.4f |", current2);
+    printf("Raw data curren: %d \n", value_voltage2);
 }
 
 // Fungsi untuk menghapus dan menulis nilai ke flash memory
