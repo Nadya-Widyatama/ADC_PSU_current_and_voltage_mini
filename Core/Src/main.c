@@ -52,7 +52,6 @@ SPI_HandleTypeDef hspi1;
 TIM_HandleTypeDef htim1;
 
 UART_HandleTypeDef huart1;
-
 /* USER CODE BEGIN PV */
 void ReadADC_voltage_current(void);
 void write_value(float value, uint32_t address);
@@ -120,8 +119,8 @@ int main(void)
   MX_TIM1_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
+  //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
   Beep_Beep();
 
   uint32_t address = 0x000000;
@@ -587,15 +586,15 @@ void ReadADC_voltage_current(void){
 	value_voltage1 = ((sumADC_voltage1 / 500) - 60) * 3882 / (3942 - 60);
 	value_current1 = ((sumADC_current1 / 500) - 60) * 4035 / (4095 - 60);
 	value_voltage2 = ((sumADC_voltage2 / 500) - 59) * 3886 / (3994 - 59);
-	value_current2 = sumADC_current2 / 500;//((sumADC_current2 / 200) - 57) * 4038 / (4095 - 57);
+	value_current2 = ((sumADC_current2 / 500) - 57) * 4038 / (4095 - 57);
 
 	voltage1 = (value_voltage1 * 14.6) / 3882;
-	voltage_current1 = (value_current1 * 3.31) / 4035;
-	current1 = fabs((voltage_current1 - 2.55) / 0.1041);
+	voltage_current1 = (value_current1 * 3.31) / 4095;
+	current1 = fabs((voltage_current1 - 2.5) / 0.097);
 
 	voltage2 = (value_voltage2 * 14.6) / 3836;
 	voltage_current2 = (value_current2 * 3.31) / 4095;
-	current2 = fabs((voltage_current2 - 2.437) / 0.1041);
+	current2 = fabs((voltage_current2 - 2.5) / 0.098);
 
 	//Konsumsi Arus Algoritma
 	NowMillis = HAL_GetTick();
@@ -604,14 +603,15 @@ void ReadADC_voltage_current(void){
 		konsumsiEnergi += (arusFiltered / 3600);
 		SebelumMillis = NowMillis;
 	}
-//	printf("Voltage1 : %.2f |", voltage1);
-//	printf("current1 : %.4f |", current1);
-//	printf("Voltage2 : %.2f |", voltage2);
-//	printf("current2 : %.4f \n", current2);
+	printf("Voltage1 : %.2f |", voltage1);
+	printf("current1 : %.4f |", current1);
+	printf("Voltage2 : %.2f |", voltage2);
+	printf("current2 : %.4f \n", current2);
 
 	printf("Raw data : %d |", value_current1);
-	printf("voltage_current1 : %.2f ", voltage_current1);
-	printf("current1 : %.4f \n", current1);
+	printf("Rawr data : %.4f |", voltage_current2);
+//	printf("voltage_current1 : %.2f |", voltage_current1);
+//	printf("current1 : %.2f \n", current1);
 
 //	printf("Raw data voltage1: %d |", value_voltage1);
 //	printf("Raw data currene1: %d |", value_current1);
