@@ -43,6 +43,9 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+DMA_NodeTypeDef Node_GPDMA1_Channel0;
+DMA_QListTypeDef List_GPDMA1_Channel0;
+DMA_HandleTypeDef handle_GPDMA1_Channel0;
 
 SPI_HandleTypeDef hspi1;
 
@@ -60,10 +63,11 @@ void Beep_Beep(void);
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_GPDMA1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_SPI1_Init(void);
-static void MX_USART1_UART_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -74,6 +78,7 @@ uint32_t NowMillis, SebelumMillis;
 float temperature,voltage1,current1,voltage2,current2,konsumsiEnergi;
 float read_data_float, write_value_float,arusFiltered;
 int before = 0;
+uint32_t adcBuffer[4];
 
 void __io_putchar(char ch) {
 	HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 10);
@@ -109,13 +114,14 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_GPDMA1_Init();
   MX_ADC1_Init();
   MX_SPI1_Init();
-  MX_USART1_UART_Init();
   MX_TIM1_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   //HAL_GPIO_WritePin(GPIOB, GPIO_PIN_12, 1);
-  // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, 1);
   Beep_Beep();
 
   uint32_t address = 0x000000;
@@ -126,34 +132,24 @@ int main(void)
 		  break;
 	  }
 	  HAL_Delay(50);
-
   }
 
+  // Start convert ADC using DMA
+  if (HAL_ADC_Start_DMA(&hadc1, adcBuffer, 4) != HAL_OK) {
+	  Error_Handler();
+  }
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-//	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, 1);
-//	  HAL_Delay(200);
-//	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, 0);
-//	  HAL_Delay(200);
-	  ReadData(address, sizeof(float));
-	  //printf("Read Data: %f |", read_data_float);
-	  //Membaca ADC
+	  //Read Data from Memory W25Q128JV
+	  //ReadData(address, sizeof(float));
+
+
+	  //Read ADC
 	  ReadADC_voltage_current();
-	  //printf("volt : %.4f |", voltage1);
-	  //printf("Arus : %.4f A |", current1);
-	  if(voltage1 <13.1 && before == 0){
-		  write_value(konsumsiEnergi, address);
-		  HAL_Delay(50);
-		  before = 1;
-	  }
-	  else if(voltage1 > 13.1 && before == 1){
-		  before=0;
-	  }
-	  //printf("Consumption: %.4f Ah\n", konsumsiEnergi);
 	  HAL_Delay(100);
     /* USER CODE END WHILE */
 
@@ -246,17 +242,17 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
+  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.ContinuousConvMode = ENABLE;
-  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.NbrOfConversion = 4;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.SamplingMode = ADC_SAMPLING_MODE_NORMAL;
-  hadc1.Init.Overrun = ADC_OVR_DATA_PRESERVED;
+  hadc1.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
   hadc1.Init.OversamplingMode = DISABLE;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
@@ -267,7 +263,7 @@ static void MX_ADC1_Init(void)
   */
   sConfig.Channel = ADC_CHANNEL_5;
   sConfig.Rank = ADC_REGULAR_RANK_1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
+  sConfig.SamplingTime = ADC_SAMPLETIME_92CYCLES_5;
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
@@ -275,9 +271,67 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_4;
+  sConfig.Rank = ADC_REGULAR_RANK_2;
+  sConfig.SamplingTime = ADC_SAMPLETIME_47CYCLES_5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_1;
+  sConfig.Rank = ADC_REGULAR_RANK_3;
+  sConfig.SamplingTime = ADC_SAMPLETIME_92CYCLES_5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_10;
+  sConfig.Rank = ADC_REGULAR_RANK_4;
+  sConfig.SamplingTime = ADC_SAMPLETIME_47CYCLES_5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief GPDMA1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPDMA1_Init(void)
+{
+
+  /* USER CODE BEGIN GPDMA1_Init 0 */
+
+  /* USER CODE END GPDMA1_Init 0 */
+
+  /* Peripheral clock enable */
+  __HAL_RCC_GPDMA1_CLK_ENABLE();
+
+  /* GPDMA1 interrupt Init */
+    HAL_NVIC_SetPriority(GPDMA1_Channel0_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(GPDMA1_Channel0_IRQn);
+
+  /* USER CODE BEGIN GPDMA1_Init 1 */
+
+  /* USER CODE END GPDMA1_Init 1 */
+  /* USER CODE BEGIN GPDMA1_Init 2 */
+
+  /* USER CODE END GPDMA1_Init 2 */
 
 }
 
@@ -510,64 +564,37 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+	if (hadc->Instance == ADC1) {
+		//ReadADC_voltage_current();
+	}
+}
+
+// Function to process ADC data into Voltage and Current values
 void ReadADC_voltage_current(void){
-	uint32_t sumADC_voltage1, sumADC_current1,sumADC_voltage2, sumADC_current2;
+	uint32_t sumADC_voltage1 = 0, sumADC_current1 = 0,sumADC_voltage2 = 0, sumADC_current2 = 0;
 	uint16_t value_voltage1, value_current1, value_voltage2, value_current2;
 	float voltage_current1,voltage_current2;
 
-	ADC_ChannelConfTypeDef sConfig = {0};
-	sumADC_voltage1 = sumADC_current1 = sumADC_voltage2 = sumADC_current2 = 0;
 	for (int i = 0; i < 500; i++) {
-		sConfig.Rank = ADC_REGULAR_RANK_1;
-		sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES_5;
-
-		//ADC VOLTAGE BATT1
-		sConfig.Channel = ADC_CHANNEL_5;
-		HAL_ADC_ConfigChannel(&hadc1, &sConfig);
-		HAL_ADC_Start(&hadc1);
-		if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
-			sumADC_voltage1 += HAL_ADC_GetValue(&hadc1);
-		}
-		HAL_ADC_Stop(&hadc1);
-
-		//ADC VOLTAGE BATT2
-		sConfig.Channel = ADC_CHANNEL_4;
-		HAL_ADC_ConfigChannel(&hadc1, &sConfig);
-		HAL_ADC_Start(&hadc1);
-		if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
-			sumADC_voltage2 += HAL_ADC_GetValue(&hadc1);
-		}
-		HAL_ADC_Stop(&hadc1);
-
-		//ADC CURRENT BATT1
-		sConfig.Channel = ADC_CHANNEL_1;
-		HAL_ADC_ConfigChannel(&hadc1, &sConfig);
-		HAL_ADC_Start(&hadc1);
-		if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
-			sumADC_current1 += HAL_ADC_GetValue(&hadc1);
-		}
-		HAL_ADC_Stop(&hadc1);
-
-//		ADC CURRENT BATT2
-		sConfig.Channel = ADC_CHANNEL_10;
-		HAL_ADC_ConfigChannel(&hadc1, &sConfig);
-		HAL_ADC_Start(&hadc1);
-		if (HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY) == HAL_OK) {
-			sumADC_current2 += HAL_ADC_GetValue(&hadc1);
-		}
-		HAL_ADC_Stop(&hadc1);
+		sumADC_voltage1 += adcBuffer[0];
+		sumADC_voltage2 += adcBuffer[1];
+		sumADC_current1 += adcBuffer[2];
+		sumADC_current2 += adcBuffer[3];
 	}
-	value_voltage1 = ((sumADC_voltage1 / 500) - 1317) * 2372 / (3689 - 1317);
-	value_current1 = ((sumADC_current1 / 500) - 1480) * 2552 / (4032 - 1480);
-	value_voltage2 = ((sumADC_voltage2 / 500) - 1317) * 2380 / (3697 - 1317);
-	value_current2 = ((sumADC_current2 / 500) - 1336) * 2474 / (3810 - 1336);
 
-	voltage1 = (value_voltage1 * 14.6) / 2372;
-	voltage_current1 = (value_current1 * 3.31) / 2552;
-	current1 = fabs((voltage_current1 - 2.5305) / 0.1041);
+	value_voltage1 = ((sumADC_voltage1 / 500) - 60) * 3882 / (3942 - 60);
+	value_current1 = ((sumADC_current1 / 500) - 60) * 4035 / (4095 - 60);
+	value_voltage2 = ((sumADC_voltage2 / 500) - 59) * 3886 / (3994 - 59);
+	value_current2 = sumADC_current2 / 500;//((sumADC_current2 / 200) - 57) * 4038 / (4095 - 57);
 
-	voltage2 = (value_voltage2 * 14.6) / 2380;
-	voltage_current2 = (value_current2 * 3.31) / 2474;
+	voltage1 = (value_voltage1 * 14.6) / 3882;
+	voltage_current1 = (value_current1 * 3.31) / 4035;
+	current1 = fabs((voltage_current1 - 2.55) / 0.1041);
+
+	voltage2 = (value_voltage2 * 14.6) / 3836;
+	voltage_current2 = (value_current2 * 3.31) / 4095;
 	current2 = fabs((voltage_current2 - 2.437) / 0.1041);
 
 	//Konsumsi Arus Algoritma
@@ -577,18 +604,22 @@ void ReadADC_voltage_current(void){
 		konsumsiEnergi += (arusFiltered / 3600);
 		SebelumMillis = NowMillis;
 	}
+//	printf("Voltage1 : %.2f |", voltage1);
+//	printf("current1 : %.4f |", current1);
+//	printf("Voltage2 : %.2f |", voltage2);
+//	printf("current2 : %.4f \n", current2);
 
-	//printf("Raw Data voltage: %d |", value_voltage1);
-	//
+	printf("Raw data : %d |", value_current1);
+	printf("voltage_current1 : %.2f ", voltage_current1);
+	printf("current1 : %.4f \n", current1);
 
-	printf("Voltage1 : %.4f |", voltage1);
-	printf("current1 : %.4f |", current1);
-	printf("Voltage2 : %.4f |", voltage2);
-	printf("current2 : %.4f |", current2);
-    printf("Raw data curren: %d \n", value_voltage2);
+//	printf("Raw data voltage1: %d |", value_voltage1);
+//	printf("Raw data currene1: %d |", value_current1);
+//	printf("Raw data voltage2: %d |", value_voltage2);
+//	printf("Raw data currene2: %d \n", value_current2);
 }
 
-// Fungsi untuk menghapus dan menulis nilai ke flash memory
+// Function to erase and write values to flash memory
 void write_value(float value, uint32_t address) {
 	uint8_t write_enable_cmd = 0x06;
     uint8_t data[sizeof(value)];
@@ -612,7 +643,7 @@ void write_value(float value, uint32_t address) {
     HAL_Delay(100);
 
 
-    // Perintah Write Data
+    // command Write Data
     uint8_t write_cmd[4];
     write_cmd[0] = 0x02;
     write_cmd[1] = (address >> 16) & 0xFF;
@@ -631,7 +662,7 @@ void write_value(float value, uint32_t address) {
     HAL_Delay(50);
 }
 
-// Fungsi untuk membaca data dari flash memory
+//Function to read data from flash memory
 void ReadData(uint32_t address, uint32_t length) {
     uint8_t cmd[4];
     cmd[0] = 0x03;
@@ -648,7 +679,7 @@ void ReadData(uint32_t address, uint32_t length) {
     memcpy(&read_data_float, data, sizeof(read_data_float));
 }
 
-// Fungsi untuk menghasilkan bunyi beep pada buzzer
+//Function to produce a beep sound on the buzzer
 void Beep_Beep(void) {
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 	for (int i = 0; i < 2; i++) {
